@@ -20,6 +20,7 @@ from app.routers import (
     analytics_intelligence,
     fairness_engine,
     learning_twin,
+    mark_answer,
     practice_feedback,
     predictions,
     question_generation,
@@ -67,6 +68,7 @@ app.include_router(predictions.router)
 app.include_router(analytics_intelligence.router)
 app.include_router(practice_feedback.router)
 app.include_router(fairness_engine.router)
+app.include_router(mark_answer.router)
 
 
 @app.get("/health", tags=["health"])
@@ -88,4 +90,5 @@ async def root() -> dict[str, Any]:
         "analyze_academic_intelligence": "/analyze-academic-intelligence",
         "generate_practice_feedback": "/generate-practice-feedback",
         "analyze_exam_fairness": "/analyze-exam-fairness",
+        "mark_answer": "/mark-answer",
     }

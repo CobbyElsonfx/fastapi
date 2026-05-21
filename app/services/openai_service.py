@@ -15,10 +15,10 @@ from app.schemas.question_schema import GeneratedQuestion, GenerateQuestionsRequ
 logger = logging.getLogger(__name__)
 
 
-def _expected_question_types(payload: GenerateQuestionsRequest) -> list[str]:
-    n = payload.number_of_questions
+def _expected_type_at(payload: GenerateQuestionsRequest, batch_index: int) -> str:
+    """Question type for the batch-local index (supports mixed types + chunk offset)."""
     base = list(payload.question_types) if payload.question_types else [payload.question_type]
-    return [base[(payload.question_type_offset + i) % len(base)] for i in range(n)]
+    return base[(payload.question_type_offset + batch_index) % len(base)]
 
 
 class OpenAIService:
@@ -86,14 +86,22 @@ class OpenAIService:
         if not isinstance(items, list):
             raise ValueError("JSON must contain a 'questions' array.")
 
-        expected_types = _expected_question_types(payload)
+        if len(items) > payload.number_of_questions:
+            logger.warning(
+                "Model returned %s questions, requested %s — truncating to requested count.",
+                len(items),
+                payload.number_of_questions,
+            )
+            items = items[: payload.number_of_questions]
+
         out: list[GeneratedQuestion] = []
         for i, item in enumerate(items):
             if not isinstance(item, dict):
                 raise ValueError(f"questions[{i}] must be an object.")
             merged = dict(item)
-            if merged.get("question_type") != expected_types[i]:
-                merged["question_type"] = expected_types[i]
+            expected = _expected_type_at(payload, i)
+            if merged.get("question_type") != expected:
+                merged["question_type"] = expected
             out.append(GeneratedQuestion.model_validate(merged))
 
         if len(out) != payload.number_of_questions:
